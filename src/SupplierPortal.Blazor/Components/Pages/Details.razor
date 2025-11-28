@@ -1,0 +1,149 @@
+﻿@page "/details/{Id:int}"
+@attribute [Authorize]
+@using SupplierPortal.Blazor.DTO
+@using System.Linq
+@rendermode InteractiveServer
+@inject PurchaseService PurchaseService
+@inject NavigationManager Nav
+@inject JWTAuthenticationStateProvider AuthStateProvider
+@inject AccessTokenService AccessTokenService
+
+<h3>Purchase Request Details</h3>
+
+@if (loading)
+{
+    <p>Loading...</p>
+}
+else if (purchase == null)
+{
+    <p>Not found.</p>
+}
+else
+{
+    <p><strong>Request Number:</strong> @purchase.RequestNumber</p>
+    <p><strong>Supplier:</strong> @purchase.SupplierTitle</p>
+
+    <h4>Items</h4>
+
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Id</th>
+                <th>Product Name</th>
+                <th>Unit</th>
+                <th>Quentity</th>
+                <th>Is Priced</th>
+                <th>Price</th>
+                <th>Delivery Date</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var item in purchase.Items)
+            {
+                <tr>
+                    <td>@item.Id</td>
+                    <td>@item.ProductName</td>
+                    <td>@item.Unit</td>
+                    <td>@item.Quantity</td>
+                    <td>@item.IsPriced</td>
+                   <td>
+                        @if (item.IsPriced)
+                        {
+                            @item.Price
+                        }
+                        else
+                        {
+                            <input type="number" @bind="item.Price" class="form-control" />
+                        }
+                  </td>
+                    <td>
+                        @if (item.IsPriced)
+                        {
+                            @item.DeliveryDate
+                        }
+                        else
+                        {
+                            <input type="date" @bind="item.DeliveryDate" class="form-control" />
+                        }
+                    </td>
+                    <td>
+                        @if(!item.IsPriced)
+                        {
+                            <button class="btn btn-primary" @onclick="() => UpdateItem(item)">
+                                Update
+                            </button>
+                        }
+                      
+                    </td>
+                </tr>
+            }
+        </tbody>
+        @if (purchase.Items.All(i => i.IsPriced))
+        {
+            <tfoot>
+                <tr>
+                    <td colspan="8" class="text-end">
+                        @if(purchase.Status==1)
+                        {
+                            <button class="btn btn-success" @onclick="CompleteAllItems">
+                                Complete
+                            </button>
+                        }
+                        @if (purchase.Status == 2)
+                        {
+                            <button disabled class="btn btn-success">
+                                Completed
+                            </button>
+                        }
+
+                    </td>
+                </tr>
+            </tfoot>
+        }
+    </table>
+}
+
+
+@code {
+    [Parameter] public int Id { get; set; }
+    private bool loading = true;
+    private string Token=string.Empty;
+    private PurchaseRequestDTO purchase=new PurchaseRequestDTO();
+    private UpdatePurchaseRequestItemDTO updateItem = new UpdatePurchaseRequestItemDTO();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await InitialValues();
+    }
+    private async Task InitialValues()
+    {
+        var state = await AuthStateProvider.GetAuthenticationStateAsync();
+        var user = state.User;
+        if (user.Identity!.IsAuthenticated)
+        {
+            Token = await AccessTokenService.GetToken();
+            purchase = (await PurchaseService.GetPurchaseRequestByIdAsync(Id,Token));
+            loading = false;
+        }
+
+    }
+
+    private async Task UpdateItem(PurchaseRequestItemDTO item)
+    {
+        var dto = new UpdatePurchaseRequestItemDTO
+        {
+            ItemId = item.Id,
+            Price = item.Price,
+            DeliveryDate = item.DeliveryDate
+        };
+        await PurchaseService.UpdateRequestItemAsync(Id, dto,Token);
+        purchase = (await PurchaseService.GetPurchaseRequestByIdAsync(Id,Token));
+    }
+
+    private async Task CompleteAllItems()
+    {
+        await PurchaseService.CompletePurchaseRequest(Id,Token);
+        Nav.NavigateTo("/");
+    }
+}

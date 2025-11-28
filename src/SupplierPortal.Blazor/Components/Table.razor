@@ -1,0 +1,78 @@
+﻿@page "/table"
+@attribute [Authorize]
+@using System.Security.Claims
+@using Microsoft.IdentityModel.JsonWebTokens
+@using SupplierPortal.Blazor.DTO
+@using System.Linq
+@rendermode InteractiveServer
+@inject JWTAuthenticationStateProvider AuthStateProvider
+@inject AccessTokenService AccessTokenService
+@inject PurchaseService PurchaseService
+@inject NavigationManager Nav
+
+
+<div class="container">
+	<h2>Hover Rows</h2>
+	<table class="table table-hover">
+		<thead>
+			<tr>
+				<th>Request Number</th>
+				<th>Items Count</th>
+				<th>Completed At</th>
+				<th>Status</th>
+			</tr>
+		</thead>
+		<tbody>
+			@foreach(var item in purchases)
+			{
+				<tr style="cursor:pointer" @onclick="() => GoToDetails(item.Id)">
+					<td>@item.RequestNumber</td>
+					<td>@item.Items.Count</td>
+					
+					<td>
+						@(item.CompletedAt == null
+											? "Not Completed"
+											: item.CompletedAt.Value.ToString("dd.MM.yyyy HH:mm"))
+					</td>
+					<td>
+						@(((PurchaseRequestStatus)item.Status) switch
+						{
+							PurchaseRequestStatus.Pending => "Pending",
+							PurchaseRequestStatus.InProgress => "In Progress",
+							PurchaseRequestStatus.Completed => "Completed",
+							PurchaseRequestStatus.Cancelled => "Cancelled",
+							_ => "Unknown"
+						})
+					</td>
+				</tr>
+			}
+
+		</tbody>
+	</table>
+</div>
+@code {
+	private int UserId { get; set; }
+	private string Token = string.Empty;
+	private List<PurchaseRequestDTO> purchases = new List<PurchaseRequestDTO>();
+
+	protected override async Task OnInitializedAsync()
+	{
+		await InitialValues();
+	}
+
+	private async Task InitialValues()
+	{
+		var state = await AuthStateProvider.GetAuthenticationStateAsync();
+		var user = state.User;
+		if (user.Identity!.IsAuthenticated)
+		{
+			Token = await AccessTokenService.GetToken();
+			UserId = int.Parse(user.Claims.FirstOrDefault(x => x.Type == ClaimTypes.NameIdentifier)?.Value!);
+			purchases = (await PurchaseService.GetRequestsBySupplierAsync(UserId,Token)).ToList();
+		}
+	}
+	private void GoToDetails(int id)
+	{
+		Nav.NavigateTo($"/details/{id}");
+	}
+}

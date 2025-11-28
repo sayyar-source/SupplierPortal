@@ -1,0 +1,9 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/SupplierPortal.Application/SupplierPortal.Application.csproj" />
+    <Project Path="src/SupplierPortal.Blazor/SupplierPortal.Blazor.csproj" Id="c0122b44-d62c-48a6-9a1e-99425b392878" />
+    <Project Path="src/SupplierPortal.Domain/SupplierPortal.Domain.csproj" />
+    <Project Path="src/SupplierPortal.Infrastructure/SupplierPortal.Infrastructure.csproj" />
+    <Project Path="src/SupplierPortal.WebApi/SupplierPortal.WebApi.csproj" />
+  </Folder>
+</Solution>

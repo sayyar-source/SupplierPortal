@@ -1,0 +1,6 @@
+@SupplierPortal_HostAddress = http://localhost:5160
+
+GET {{SupplierPortal_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
