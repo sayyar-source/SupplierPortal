@@ -1,58 +1,229 @@
-# SupplierPortal
+# Purchase Request Management System
 
-Project summary  
-Purchase requests sent to suppliers will be priced by the supplier and returned as feedback.
+A complete end-to-end **Purchase Request Management System** built with **ASP.NET Core MVC / API**, supporting supplier-based filtering, item updates, authorization (JWT token), and clean API usage.
 
-Architecture � DDD + Clean Architecture  
-This repository implements Domain-Driven Design (DDD) together with Clean Architecture (onion/hexagonal layering). Responsibilities and dependencies are organized so that inner layers (Domain) contain business rules and outer layers (Infrastructure, Presentation) depend on abstractions defined by the Application layer.
+This README provides a clear guide on how to run the project, understand the architecture, and use all endpoints.
 
-High-level layers
-- Domain (core): entities, value objects, domain enums, domain behavior and business rules. No external framework references.
-  - Example aggregates: `PurchaseRequest` (root) with `PurchaseRequestItem` children; `Account`.
-- Application (use-cases): DTOs, application services, validators, repository interfaces (e.g., `IPurchaseRequestRepository`), mapping profiles.
-- Infrastructure: EF Core DbContext, entity configurations (e.g., `PurchaseRequestConfiguration`), repository implementations, SMTP/email service.
-- Presentation/API: Web API controllers and Blazor UI. Presentation calls Application services or the API and consumes DTOs.
+---
 
-Why this approach
-- Keeps business rules inside domain objects (encapsulation of invariants).
-- Makes application logic testable and independent from persistence or frameworks.
-- Allows swapping infrastructure implementations without changing domain/use-cases.
-- Stabilizes API surface by using DTOs rather than exposing EF entities directly.
+## 🚀 Features
 
-Quick start (local)
-- Requirements: .NET SDK, SQL Server (or other supported DB).
-- Configure connection string in the Web API `appsettings.json`.
-- Apply EF migrations (project containing DbContext):
-  - `dotnet ef database update`
-- Run projects:
-  - API: `dotnet run --project src/SupplierPortal.WebApi`
-  - Blazor App: `dotnet run --project src/SupplierPortal.Blazor`
-- Open the Blazor app in your browser (default: `https://localhost:5001` or `http://localhost:5000`).
+* Create purchase requests
+* Update purchase request items
+* Get purchase requests by supplier
+* Secure API using JWT authorization
+* Strong separation of concerns (Controller → Service → Repository)
+* DTO-based clean API communication
+* Supports async operations
 
-Postman examples (replace `{{API_BASE}}`)
-- Create supplier:
-  - `POST {{API_BASE}}/api/suppliers`
-  - Body: `{ "code":"S001","title":"Vendor A","phone":"...","address":"...","username":"user","password":"pass" }`
-- Create purchase request:
-  - `POST {{API_BASE}}/api/purchase-requests` (header + items)
-- Update item price (supplier action):
-  - `PUT {{API_BASE}}/api/purchase-requests/{requestId}/items/{itemId}`
-  - Body: `{ "price": 123.45, "deliveryDate": "2025-12-01T00:00:00" }`
-- Get completed requests:
-  - `GET {{API_BASE}}/api/purchase-requests/completed`
+---
 
-Recommendations & next steps
-- Keep use-case orchestration in Application services; domain entities expose behavior (e.g., `MarkAsCompleted`, `UpdateItemPrice`) to enforce rules.
-- Define repository interfaces in Application and implement them in Infrastructure (EF Core).
-- Map EF entities to DTOs before returning from controllers to avoid exposing persistence concerns.
-- Add unit tests for domain rules and integration tests for repositories.
-- Add a Postman collection and CI pipeline (GitHub Actions) to run builds and tests.
+## 🏗️ ## Architecture — Fullstack (API + Blazor) using DDD & Clean Architecture
 
-License & contribution
-- Add a LICENSE file (for example MIT) before publishing.
-- Create feature branches and open pull requests. Follow the repository layering and coding conventions.
+This solution is a **fullstack application** composed of:
 
-If you want, I can generate:
-- A sample Postman collection JSON,
-- Interface stubs and DI wiring examples,
-- A unit test template for a domain method (e.g., `PurchaseRequest.MarkAsCompleted()`).
+* **Blazor Frontend** — client UI for suppliers and internal users
+* **Web API Backend** — REST endpoints exposing application use‑cases
+* **Application Layer** — use‑case orchestration, DTOs, service logic, repository interfaces
+* **Domain Layer** — enterprise business rules, aggregates, entities, value objects, domain events
+* **Infrastructure Layer** — EF Core, repository implementations, DbContext, external integrations
+
+The architecture follows strict DDD and Clean Architecture rules:
+
+* **Domain is pure C#** with no external dependencies
+* **Application depends only on Domain** and defines contracts for Infrastructure
+* **Infrastructure implements Application contracts** (repositories, SMTP/email, persistence)
+* **Web API + Blazor depend on Application**, never on Infrastructure directly
+
+This structure ensures flexibility, testability, and maintainability across the entire fullstack system. Overview
+
+```
+┌───────────────────────────┐
+│   ASP.NET Core API Layer  │
+└──────────────┬────────────┘
+               │
+┌──────────────┴────────────┐
+│     Application Layer     │
+│  (Services, DTO Mapping)  │
+└──────────────┬────────────┘
+               │
+┌──────────────┴────────────┐
+│       Repository Layer     │
+│   (EF Core, Database Ops)  │
+└──────────────┬────────────┘
+               │
+┌──────────────┴────────────┐
+│         SQL Database       │
+└────────────────────────────┘
+```
+
+---
+
+## ⚙️ How to Run
+
+### 1. Clone the repository
+
+```
+git clone https://github.com/yourrepo/purchase-request-api.git
+cd purchase-request-api
+```
+
+### 2. Update database
+
+```
+dotnet ef database update
+```
+
+### 3. Run the API
+
+```
+dotnet run
+```
+
+API will be available at:
+
+```
+https://localhost:5001/api
+```
+
+---
+
+## 🔐 Authentication (JWT)
+
+All API calls require a valid JWT token.
+
+Example request header:
+
+```
+Authorization: Bearer <your_token_here>
+```
+
+### How to add token in HttpClient (C#)
+
+```csharp
+client.DefaultRequestHeaders.Authorization =
+    new AuthenticationHeaderValue("Bearer", token);
+```
+
+---
+
+## 📡 API Endpoints
+
+### ✅ Get Requests by Supplier
+
+**GET** `/api/PurchaseRequests/supplier/{supplierId}`
+
+```http
+GET /api/PurchaseRequests/supplier/3
+Authorization: Bearer <token>
+```
+
+**Response:**
+
+```json
+[
+  {
+    "id": 1,
+    "supplierId": 3,
+    "notes": "Urgent order",
+    "items": [
+      {
+        "id": 10,
+        "productName": "Steel Pipe",
+        "quantity": 50,
+        "unit": "Piece",
+        "isPriced": true,
+        "price": 120.5
+      }
+    ]
+  }
+]
+```
+
+---
+
+### 📝 Update Purchase Request Item
+
+**PUT** `/api/PurchaseRequests/{purchaseRequestId}/item`
+
+#### Request Body
+
+```json
+{
+  "itemId": 12,
+  "productName": "Updated Name",
+  "quantity": 40,
+  "unit": "Piece",
+  "isPriced": true,
+  "price": 85.75
+}
+```
+
+#### Controller Method
+
+```csharp
+[HttpPut("{purchaseRequestId}/item")]
+public async Task<ActionResult> UpdateRequestItem(int purchaseRequestId, [FromBody] UpdatePurchaseRequestItemDTO updateDto)
+{
+    await _purchaseRequestService.UpdatePurchaseRequestItemAsync(purchaseRequestId, updateDto);
+    return NoContent();
+}
+```
+
+---
+
+## 🧪 Sample C# Client Usage
+
+```csharp
+string url = $"api/PurchaseRequests/supplier/{supplierId}";
+client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+var response = await client.GetAsync(url);
+response.EnsureSuccessStatusCode();
+
+var purchases = await response.Content.ReadFromJsonAsync<IEnumerable<PurchaseRequestDTO>>();
+return purchases ?? Enumerable.Empty<PurchaseRequestDTO>();
+```
+
+---
+
+## 📄 Sample JSON for Create Purchase Request
+
+```json
+{
+  "supplierId": 1,
+  "notes": "string",
+  "items": [
+    {
+      "productName": "string",
+      "quantity": 10,
+      "unit": "Box"
+    }
+  ]
+}
+```
+
+---
+
+## 🧰 Technologies Used
+
+* ASP.NET Core 8/9 API
+* Entity Framework Core
+* JWT Authentication
+* Serilog Logging
+* SQL Server or PostgreSQL
+* Clean Architecture principles
+
+---
+
+## 📧 Contact
+
+Created by **Mohammad**
+
+If you need help or want a full project file, feel free to ask!
+
+---
+
+## ✔️ License
+
+MIT License — free to use and modify.
